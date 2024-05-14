@@ -1,8 +1,5 @@
 'use strict';
 
-let usernamePage = document.querySelector('#username-page');
-let chatPage = document.querySelector('#chat-page');
-let usernameForm = document.querySelector('#usernameForm');
 let messageForm = document.querySelector('#messageForm');
 let messageInput = document.querySelector('#message');
 let messageArea = document.querySelector('#messageArea');
@@ -10,55 +7,69 @@ let connectingElement = document.querySelector('.connecting');
 
 let stompClient = null;
 let username = null;
+let currentRoom = 'public';
 
 let colors = [
   '#2196F3', '#32c787', '#00BCD4', '#ff5652',
   '#ffc107', '#ff85af', '#FF9800', '#39bbb0'
 ];
 
-function connect(event) {
-  username = document.querySelector('#name').value.trim();
+window.onload = function () {
+  username = document.getElementById('hiddenUsername').value;
+  let socket = new SockJS('/ws');
+  stompClient = Stomp.over(socket);
 
-  if(username) {
-    usernamePage.classList.add('hidden');
-    chatPage.classList.remove('hidden');
+  stompClient.connect({}, onConnected, onError);
 
-    let socket = new SockJS('/ws');
-    stompClient = Stomp.over(socket);
-
-    stompClient.connect({}, onConnected, onError);
-  }
-  event.preventDefault();
+  let roomItems = document.querySelectorAll('.room-item');
+  roomItems.forEach(function(roomItem) {
+    roomItem.addEventListener('click', function(event) {
+      event.preventDefault();
+      onJoinRoom(this.id);
+    });
+  });
 }
 
+function onJoinRoom(roomName) {
+  // if (stompClient.subscriptions[currentRoom]) {
+  // }
+  stompClient.unsubscribe(currentRoom);
+  stompClient.send("/app/chat.leaveUser", {},
+      JSON.stringify({sender: username, type: "LEAVE", room: currentRoom}))
+  console.log(stompClient.subscriptions)
+  currentRoom = roomName;
+  stompClient.subscribe("/topic/" + currentRoom, onMessageReceived, {id: currentRoom});
+
+  stompClient.send("/app/chat.addUser", {},
+      JSON.stringify({sender: username, type: "JOIN", room: currentRoom}));
+}
 
 function onConnected() {
   // Subscribe to the Public Topic
-  stompClient.subscribe('/topic/public', onMessageReceived);
+  stompClient.subscribe('/topic/' + currentRoom, onMessageReceived, {id: currentRoom});
 
   // Tell your username to the server
   stompClient.send("/app/chat.addUser",
       {},
-      JSON.stringify({sender: username, type: 'JOIN'})
+      JSON.stringify({sender: username, type: 'JOIN', room: currentRoom})
   )
 
   connectingElement.classList.add('hidden');
 }
-
 
 function onError(error) {
   connectingElement.textContent = 'Could not connect to WebSocket server. Please refresh this page to try again!';
   connectingElement.style.color = 'red';
 }
 
-
 function sendMessage(event) {
   let messageContent = messageInput.value.trim();
-  if(messageContent && stompClient) {
+  if (messageContent && stompClient) {
     let chatMessage = {
       sender: username,
       content: messageInput.value,
-      type: 'CHAT'
+      type: 'CHAT',
+      room: currentRoom
     };
     stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
     messageInput.value = '';
@@ -66,19 +77,18 @@ function sendMessage(event) {
   event.preventDefault();
 }
 
-
 function onMessageReceived(payload) {
   console.log(payload)
   let message = JSON.parse(payload.body);
 
   let messageElement = document.createElement('li');
 
-  if(message.type === 'JOIN') {
+  if (message.type === 'JOIN') {
     messageElement.classList.add('event-message');
-    message.content = message.sender + ' joined!';
+    message.content = message.sender + ' joined on room: ' + message.room;
   } else if (message.type === 'LEAVE') {
     messageElement.classList.add('event-message');
-    message.content = message.sender + ' left!';
+    message.content = message.sender + ' left from room: ' + message.room;
   } else {
     messageElement.classList.add('chat-message');
 
@@ -105,7 +115,6 @@ function onMessageReceived(payload) {
   messageArea.scrollTop = messageArea.scrollHeight;
 }
 
-
 function getAvatarColor(messageSender) {
   let hash = 0;
   for (let i = 0; i < messageSender.length; i++) {
@@ -115,5 +124,4 @@ function getAvatarColor(messageSender) {
   return colors[index];
 }
 
-usernameForm.addEventListener('submit', connect, true)
 messageForm.addEventListener('submit', sendMessage, true)

@@ -27,9 +27,6 @@ body {
   clear: both;
 }
 
-.hidden {
-  display: none;
-}
 
 .form-control {
   width: 100%;
@@ -122,6 +119,11 @@ button.accent {
 }
 
 
+.hidden {
+  display: none;
+}
+
+
 #chat-page {
   position: relative;
   height: 100%;
@@ -129,6 +131,7 @@ button.accent {
 
 .chat-container {
   max-width: 700px;
+  min-width: 500px;
   margin-left: auto;
   margin-right: auto;
   background-color: #fff;
@@ -237,6 +240,11 @@ button.accent {
   position: absolute;
   top: 65px;
   width: 100%;
+}
+
+#messageArea {
+  height: 1000px; /* Задайте высоту, которая вам подходит */
+  overflow-y: auto; /* Добавьте прокрутку по вертикали */
 }
 
 

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link href="/bootstrap/css/bootstrap.css" rel="stylesheet">
+  <script src="/bootstrap/js/bootstrap.js" defer></script>
+  <style>
+    html, body {
+      height: 100%;
+    }
+    .container {
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .form-container {
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <form class="form-container" method="post" action="/main/process_login">
+    <div class="mb-3">
+      <label for="username" class="form-label">Введите имя, чтобы зайти в чат</label>
+      <input type="text" name="username" class="form-control" id="username">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+</div>
+</body>
+</html>

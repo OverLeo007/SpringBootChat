@@ -5,12 +5,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@ToString
 public class ChatMessage {
   private String content;
 
@@ -18,12 +20,5 @@ public class ChatMessage {
 
   private MessageType type;
 
-  @Override
-  public String toString() {
-    return "ChatMessage{" +
-        "content='" + content + '\'' +
-        ", sender='" + sender + '\'' +
-        ", messageType=" + type +
-        '}';
-  }
+  private String room;
 }

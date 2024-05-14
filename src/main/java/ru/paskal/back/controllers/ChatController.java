@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import ru.paskal.back.models.ChatMessage;
 
@@ -14,25 +14,37 @@ import ru.paskal.back.models.ChatMessage;
 @Slf4j
 public class ChatController {
 
+  private final SimpMessagingTemplate messagingTemplate;
+
   @MessageMapping("/chat.sendMessage")
-  @SendTo("/topic/public")
-  public ChatMessage sendMessage(
+  public void sendMessage(
       @Payload ChatMessage chatMessage
   ) {
     log.info("sent message: " + chatMessage);
-    return chatMessage;
+    messagingTemplate.convertAndSend("/topic/" + chatMessage.getRoom(), chatMessage);
   }
 
 
   @MessageMapping("/chat.addUser")
-  @SendTo("/topic/public")
-  public ChatMessage addUser(
+  public void addUser(
       @Payload ChatMessage chatMessage,
       SimpMessageHeaderAccessor headerAccessor
   ) {
     log.info("User connected :{}", chatMessage.getSender());
     headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
-    return chatMessage;
+    headerAccessor.getSessionAttributes().put("room", chatMessage.getRoom());
+    messagingTemplate.convertAndSend("/topic/" + chatMessage.getRoom(), chatMessage);
+  }
+
+  @MessageMapping("/chat.leaveUser")
+  public void leaveUser(
+      @Payload ChatMessage chatMessage,
+      SimpMessageHeaderAccessor headerAccessor
+  ) {
+    log.info("User disconnected :{}", chatMessage.getSender());
+    headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
+    headerAccessor.getSessionAttributes().put("room", chatMessage.getRoom());
+    messagingTemplate.convertAndSend("/topic/" + chatMessage.getRoom(), chatMessage);
   }
 
 }

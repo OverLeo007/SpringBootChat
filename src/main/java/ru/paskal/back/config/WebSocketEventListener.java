@@ -25,13 +25,15 @@ public class WebSocketEventListener {
     StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
     log.info(Objects.requireNonNull(headerAccessor.getSessionAttributes()).toString());
     String username = (String) headerAccessor.getSessionAttributes().get("username");
+    String roomName = (String) headerAccessor.getSessionAttributes().get("room");
     if (username != null) {
       log.info("User disconnected :{}", username);
       var chatMessage = ChatMessage.builder()
           .type(MessageType.LEAVE)
           .sender(username)
+          .room(roomName)
           .build();
-      messageTemplate.convertAndSend("/topic/public", chatMessage);
+      messageTemplate.convertAndSend("/topic/" + roomName, chatMessage);
     }
   }
 

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import ru.paskal.back.models.ChatMessage;
 import ru.paskal.back.models.MessageType;
+import ru.paskal.back.services.MessageService;
 
 @Component
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ import ru.paskal.back.models.MessageType;
 public class WebSocketEventListener {
 
   private final SimpMessageSendingOperations messageTemplate;
+  private final MessageService messageService;
 
   @EventListener
   public void handleWebSocketDisconnectListener(
@@ -33,7 +35,7 @@ public class WebSocketEventListener {
           .sender(username)
           .room(roomName)
           .build();
-      messageTemplate.convertAndSend("/topic/" + roomName, chatMessage);
+      messageTemplate.convertAndSend("/topic/" + roomName, messageService.save(chatMessage));
     }
   }
 

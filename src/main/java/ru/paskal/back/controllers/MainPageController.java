@@ -1,7 +1,6 @@
 package ru.paskal.back.controllers;
 
 import jakarta.servlet.http.HttpSession;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -10,9 +9,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import ru.paskal.back.entities.Room;
 import ru.paskal.back.models.LoginRequest;
-import ru.paskal.back.services.RoomService;
+import ru.paskal.back.services.MessageService;
 
 @Controller()
 @RequestMapping("/main")
@@ -20,7 +18,8 @@ import ru.paskal.back.services.RoomService;
 @Slf4j
 public class MainPageController {
 
-  private final RoomService roomService;
+  private final MessageService messageService;
+
 
   @GetMapping
   public String index(HttpSession session, Model model) {
@@ -29,10 +28,8 @@ public class MainPageController {
       return "redirect:/main/login";
     }
     model.addAttribute("username", username);
-    var rooms = roomService.getAll();
-    log.info(rooms.stream().map(Room::toString).collect(Collectors.joining(", ")));
 
-    model.addAttribute("rooms", rooms);
+    model.addAttribute("rooms", messageService.getRooms());
     return "main/index";
   }
 

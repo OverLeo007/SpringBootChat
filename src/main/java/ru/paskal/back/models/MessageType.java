@@ -3,7 +3,8 @@ package ru.paskal.back.models;
 public enum MessageType {
   CHAT,
   JOIN,
-  LEAVE
+  LEAVE,
+  LOAD
 }
 
 

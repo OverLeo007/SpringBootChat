@@ -7,10 +7,14 @@ let connectingElement = document.querySelector('.connecting');
 let roomButtonDiv = document.querySelector("#rooms-buttons");
 let newRoomNameInput = document.querySelector("#new-room-name-input");
 let newRoomBtn = document.querySelector("#create-new-room-btn")
+let curRoomTitle = document.querySelector("#roomNameTitle")
 
 let stompClient = null;
 let username = null;
+let firebaseToken = null;
 let currentRoom = 'public';
+let messaging = null;
+let database = null;
 
 let colors = [
   '#2196F3', '#32c787', '#00BCD4', '#ff5652',
@@ -23,7 +27,7 @@ window.onload = function () {
   stompClient = Stomp.over(socket);
 
   stompClient.connect({}, onConnected, onError);
-
+  setupFirebase()
   let roomItems = document.querySelectorAll('.room-item');
   roomItems.forEach(function (roomItem) {
     roomItem.addEventListener('click', function (event) {
@@ -31,29 +35,178 @@ window.onload = function () {
       onJoinRoom(this.id);
     });
   });
+
+  let subToggles = document.querySelectorAll('.sub-toggle');
+  subToggles.forEach(function (subToggle) {
+        subToggle.addEventListener('click', function (event) {
+              onToggleSubscribe(this.id.split("-")[0], event.target.checked)
+            }
+        )
+      }
+  )
+
+}
+
+function setupFirebase() {
+  const firebaseConfig = {
+    apiKey: "AIzaSyD51WF9SzwDfD1yElIC6QnBlemU6b8P_Rg",
+    authDomain: "chatapp-9df70.firebaseapp.com",
+    databaseURL: "https://chatapp-9df70-default-rtdb.firebaseio.com",
+    projectId: "chatapp-9df70",
+    storageBucket: "chatapp-9df70.appspot.com",
+    messagingSenderId: "234718666984",
+    appId: "1:234718666984:web:51dba660cf01b18bb1a95d",
+    measurementId: "G-Y6J6NFFRB5"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  messaging = firebase.messaging();
+  database = firebase.database();
+
+  messaging.requestPermission()
+  .then(function () {
+    console.log('Notification permission granted.');
+    return messaging.getToken();
+  })
+  .then(function (token) {
+    console.log('Token: ', token);
+    firebaseToken = token
+    fetch('/fcm/saveToken', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({token: token, username: username}),
+    })
+    .catch(function (err) {
+      console.log('Unable to send token to server.', err);
+    });
+  })
+  .catch(function (err) {
+    console.log('Unable to get permission to notify.', err);
+  });
+
+  messaging.onMessage((payload) => {
+    console.log('Message received. ', payload);
+    const notificationTitle = `${payload.data.sender} in ${payload.data.room}`;
+    const notificationOptions = {
+      body: payload.data.content,
+    };
+
+    if (Notification.permission === "granted") {
+      let notification = new Notification(notificationTitle,
+          notificationOptions);
+    } else {
+      console.error("Notification not granted, sad:(")
+    }
+    console.log('Displaying notification with title: ' + payload.data.sender
+        + ' and body: ' + payload.data.content);
+  });
+
+  checkFirebaseConnection()
+}
+
+function checkFirebaseConnection() {
+  const testRef = database.ref('testConnection')
+  testRef.set({
+    test: "Hello, Firebase!"
+  }).then(() => {
+    console.log("FIREBASE WRITE: SUCCESS")
+    testRef.once('value').then((snapshot) => {
+      const data = snapshot.val();
+      console.log("READ: SUCCESS")
+
+      testRef.remove().then(() => {
+        console.log("FIREBASE DELETE: SUCCESS")
+      }).catch((error) => {
+        console.log("FIREBASE WRITE: ERROR")
+        console.error(error)
+      });
+    }).catch((error) => {
+      console.log("FIREBASE READ: ERROR")
+      console.error(error)
+    });
+  }).catch((error) => {
+    console.log("FIREBASE DELETE: ERROR")
+    console.error(error)
+  });
 }
 
 newRoomBtn.addEventListener('click', (event) => {
   let roomName = newRoomNameInput.value
-  onJoinRoom(roomName)
-  addNewRoom(roomName)
+  onJoinRoom(roomName);
+  addNewRoom(roomName);
   event.preventDefault();
 })
 
+function onToggleSubscribe(roomName, state) {
+  console.log();
+  if (state) {
+    console.log(`Активирована подписка на ${roomName}`)
+    stompClient.send("/app/users.subscribe", {},
+        JSON.stringify({topic: roomName, token: firebaseToken}))
+  } else {
+    console.log(`Деактивирована подписка на ${roomName}`)
+    stompClient.send("/app/users.unsubscribe", {},
+        JSON.stringify({topic: roomName, token: firebaseToken}))
+  }
+
+}
+
 function addNewRoom(roomName) {
-  let newRoom = document.createElement('a');
-  // Устанавливаем атрибуты и классы для нового элемента
-  newRoom.href = "#";
-  newRoom.classList.add("room-item", "btn", "btn-secondary", "w-100",
+  let newRoom = document.createElement('div');
+  newRoom.classList.add("card");
+
+  let header = document.createElement('div');
+  header.classList.add("class-header", "text-center");
+  header.textContent = "Комната " + roomName;
+  newRoom.appendChild(header);
+
+  let body = document.createElement('div');
+  body.classList.add("card-body");
+
+  let link = document.createElement('a');
+  link.href = "#";
+  link.classList.add("room-item", "btn", "btn-secondary", "btn-sm", "w-100",
       "text-start");
-  newRoom.setAttribute("data-bs-dismiss", "offcanvas");
-  newRoom.id = roomName
-  let spanEl = document.createElement('span')
-  spanEl.textContent = "Комната " + roomName
-  newRoom.appendChild(spanEl)
-  roomButtonDiv.appendChild(
-      newRoom
-  )
+  link.setAttribute("data-bs-dismiss", "offcanvas");
+  link.id = roomName;
+  link.textContent = "Перейти";
+  body.appendChild(link);
+  newRoom.appendChild(body);
+
+  let footer = document.createElement('div');
+  footer.classList.add("card-footer");
+
+  let formCheck = document.createElement('div');
+  formCheck.classList.add("form-check", "form-switch");
+
+  let label = document.createElement('label');
+  label.classList.add("form-check-label");
+  label.setAttribute("for", roomName + "Check");
+  label.textContent = "Подписаться";
+  formCheck.appendChild(label);
+
+  let input = document.createElement('input');
+  input.classList.add("form-check-input", "sub-toggle");
+  input.type = "checkbox";
+  input.role = "switch";
+  input.id = roomName + "-Check";
+  formCheck.appendChild(input);
+
+  footer.appendChild(formCheck);
+  newRoom.appendChild(footer);
+
+  roomButtonDiv.appendChild(newRoom);
+
+  link.addEventListener('click', function (event) {
+    event.preventDefault();
+    onJoinRoom(this.id);
+  })
+
+  input.addEventListener('click', function (event) {
+    onToggleSubscribe(this.id.split("-")[0])
+  })
 }
 
 function loadHistory(roomName) {
@@ -67,31 +220,34 @@ function onJoinRoom(roomName) {
   if (roomName === currentRoom) {
     return;
   }
-  stompClient.unsubscribe(currentRoom);
-  stompClient.send("/app/chat.leaveUser", {},
-      JSON.stringify({sender: username, type: "LEAVE", room: currentRoom}))
+  leaveFromRoom()
   currentRoom = roomName;
-  stompClient.subscribe("/topic/" + currentRoom, onMessageReceived,
-      {id: currentRoom});
-
-  stompClient.send("/app/chat.addUser", {},
-      JSON.stringify({sender: username, type: "JOIN", room: currentRoom}));
+  connectToRoom()
   loadHistory(currentRoom)
+
 }
 
 function onConnected() {
-  // Subscribe to the Public Topic
+
+  connectToRoom()
+  connectingElement.classList.add('hidden');
+}
+
+function connectToRoom() {
   stompClient.subscribe('/topic/' + currentRoom, onMessageReceived,
       {id: currentRoom});
-
-  // Tell your username to the server
   stompClient.send("/app/chat.addUser",
       {},
       JSON.stringify({sender: username, type: 'JOIN', room: currentRoom})
   )
-
-  connectingElement.classList.add('hidden');
+  curRoomTitle.innerHTML = `Текущая комната: ${currentRoom}`
   loadHistory(currentRoom)
+}
+
+function leaveFromRoom() {
+  stompClient.unsubscribe(currentRoom);
+  stompClient.send("/app/chat.leaveUser", {},
+      JSON.stringify({sender: username, type: "LEAVE", room: currentRoom}))
 }
 
 function onError(error) {

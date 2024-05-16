@@ -18,7 +18,6 @@ import ru.paskal.back.services.MessageService;
 public class WebSocketEventListener {
 
   private final SimpMessageSendingOperations messageTemplate;
-  private final MessageService messageService;
 
   @EventListener
   public void handleWebSocketDisconnectListener(
@@ -29,13 +28,13 @@ public class WebSocketEventListener {
     String username = (String) headerAccessor.getSessionAttributes().get("username");
     String roomName = (String) headerAccessor.getSessionAttributes().get("room");
     if (username != null) {
-      log.info("User disconnected :{}", username);
+      log.info("User {} disconnected from room {}", username, roomName);
       var chatMessage = ChatMessage.builder()
           .type(MessageType.LEAVE)
           .sender(username)
           .room(roomName)
           .build();
-      messageTemplate.convertAndSend("/topic/" + roomName, messageService.save(chatMessage));
+      messageTemplate.convertAndSend("/topic/" + roomName, chatMessage);
     }
   }
 

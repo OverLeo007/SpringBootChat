@@ -44,11 +44,11 @@ public class MainPageController {
     return "redirect:/main";
   }
 
-@PostMapping("/process_login")
-public String processLogin(@ModelAttribute LoginRequest request, HttpSession session) {
+  @PostMapping("/process_login")
+  public String processLogin(@ModelAttribute LoginRequest request, HttpSession session) {
     log.info(request.getUsername());
     session.setAttribute("username", request.getUsername());
     return "redirect:/main";
-}
+  }
 
 }
